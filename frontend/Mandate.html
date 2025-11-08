@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>Mandate — Chatbot</title>
+	<style>
+		:root { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
+		body { margin: 0; padding: 1.5rem; background: #f7f9fb; color: #111; }
+		main { max-width: 900px; margin: 0 auto; }
+		.chat-shell { background: #fff; border-radius: 8px; box-shadow: 0 6px 18px rgba(20,20,20,0.06); padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
+		.chat-log { height: 48vh; overflow: auto; padding: 0.75rem; border: 1px solid #eceff2; border-radius: 6px; background: #fcfdff; }
+		.message { margin: 0.5rem 0; max-width: 85%; padding: 0.6rem 0.75rem; border-radius: 6px; white-space: pre-wrap; }
+		.message.user { margin-left: auto; background: #0b74de; color: white; }
+		.message.assistant { margin-right: auto; background: #f1f5f9; color: #111827; }
+		.chat-controls { display: flex; gap: 0.5rem; align-items: center; }
+		textarea#chat-input { width: 100%; min-height: 64px; resize: vertical; padding: 0.6rem; border-radius: 6px; border: 1px solid #dfe6ee; font: inherit; }
+		button { padding: 0.6rem 0.9rem; border-radius: 6px; border: none; background: #0069d9; color: #fff; cursor: pointer; }
+		button[disabled] { opacity: 0.55; cursor: not-allowed; }
+		.visually-hidden { position: absolute !important; height: 1px; width: 1px; overflow: hidden; clip: rect(1px, 1px, 1px, 1px); white-space: nowrap; }
+		@media (max-width:600px){ .chat-log{height:38vh;} }
+	</style>
+</head>
+<body>
+	<main>
+		<h1 id="page-title">Mandate — Deal setup assistant</h1>
+		<section class="chat-shell" aria-labelledby="page-title">
+			<div id="chat-log" class="chat-log" role="log" aria-live="polite" aria-atomic="false" tabindex="0">
+				<!-- messages will be appended here -->
+			</div>
+
+			<form id="chat-form" class="chat-controls" aria-label="Chat input" autocomplete="off">
+				<label for="chat-input" class="visually-hidden">Type your deal description</label>
+				<textarea id="chat-input" name="message" placeholder="Describe the deal you're looking for (press Enter to send, Shift+Enter for newline)" aria-describedby="helper"></textarea>
+				<div style="display:flex;flex-direction:column;gap:.5rem;">
+					<button id="send-btn" type="submit">Send</button>
+					<button id="clear-btn" type="button" aria-label="Clear chat">Clear</button>
+				</div>
+			</form>
+			<div id="helper" style="font-size:.9rem;color:#555">Press Enter to send; Shift+Enter to add a newline.</div>
+		</section>
+
+		<script>
+			(function(){
+				const chatLog = document.getElementById('chat-log');
+				const input = document.getElementById('chat-input');
+				const form = document.getElementById('chat-form');
+				const sendBtn = document.getElementById('send-btn');
+				const clearBtn = document.getElementById('clear-btn');
+
+				function appendMessage(role, text){
+					const msg = document.createElement('div');
+					msg.className = 'message ' + (role === 'user' ? 'user' : 'assistant');
+					msg.setAttribute('data-role', role);
+					// Use textContent to avoid XSS
+					msg.textContent = text;
+					chatLog.appendChild(msg);
+					// Keep focusable log visible
+					msg.scrollIntoView({behavior:'smooth', block:'end'});
+				}
+
+				function setProcessing(isProcessing){
+					sendBtn.disabled = isProcessing;
+					input.disabled = isProcessing;
+					if(isProcessing){ sendBtn.textContent = 'Thinking...'; }
+					else { sendBtn.textContent = 'Send'; }
+				}
+
+				async function sendMessage(userText){
+					setProcessing(true);
+					try {
+						// Simple payload compatible with backend used in the project
+						const payload = { messages: [{ role: 'user', content: userText }] };
+						const resp = await fetch('/api/llm/deals', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify(payload)
+						});
+
+						if(!resp.ok){
+							const t = await resp.text();
+							throw new Error('Server error: ' + resp.status + ' ' + t);
+						}
+
+						const data = await resp.json();
+						// expected `{ message: string, suggestedDeal?: {...} }`
+						if(data && data.message){
+							appendMessage('assistant', data.message);
+						} else if(data && data.suggestedDeal){
+							appendMessage('assistant', JSON.stringify(data.suggestedDeal, null, 2));
+						} else {
+							appendMessage('assistant', 'No response from assistant.');
+						}
+					} catch (err){
+						console.error(err);
+						appendMessage('assistant', 'An error occurred: ' + (err.message || err));
+					} finally {
+						setProcessing(false);
+					}
+				}
+
+				form.addEventListener('submit', function(e){
+					e.preventDefault();
+					const text = input.value.trim();
+					if(!text) return;
+					appendMessage('user', text);
+					input.value = '';
+					// focus back to input for keyboard users
+					input.focus();
+					// fire off async send
+					sendMessage(text);
+				});
+
+				// Enter to submit, Shift+Enter for newline
+				input.addEventListener('keydown', function(e){
+					if(e.key === 'Enter' && !e.shiftKey){
+						e.preventDefault();
+						form.requestSubmit();
+					}
+				});
+
+				clearBtn.addEventListener('click', function(){
+					chatLog.innerHTML = '';
+					input.value = '';
+					input.focus();
+				});
+
+				// Small accessibility helpers: announce when page loaded
+				window.addEventListener('load', function(){
+					// ensure log is focused so screen readers start at top
+					chatLog.setAttribute('tabindex','0');
+				});
+			})();
+		</script>
+	</main>
+</body>
+</html>
+
