@@ -110,7 +110,10 @@
       if(!user){ loginMsg.textContent = 'No account found for that email.'; return; }
       const passHash = await hash(pass);
       if(passHash !== user.passwordHash){ loginMsg.textContent = 'Incorrect password.'; return; }
+      // Persist session and redirect to index
       showProfile(user);
+      // Redirect to home page after successful sign in
+      window.location.href = 'index.html';
     });
 
     document.getElementById('signOutBtn').addEventListener('click', function(){ hideProfile(); });

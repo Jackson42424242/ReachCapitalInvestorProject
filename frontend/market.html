@@ -52,16 +52,26 @@
         .hidden {
             display: none;
         }
-        /* Styles for active rows */
+        /* Styles for status indicators */
         .active-row {
             transition: background-color 0.2s;
         }
         .active-row:hover {
             background-color: rgba(0,191,255,0.1);
         }
-        .active-status {
+        .status-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .status-active {
+            background-color: rgba(0,179,0,0.1);
             color: #00b300;
-            font-weight: bold;
+        }
+        .status-inactive {
+            background-color: rgba(128,128,128,0.1);
+            color: #666;
         }
         /* Add subtle animation to indicate clickable */
         .active-row td {
@@ -218,9 +228,11 @@
                         <td>${item.name}</td>
                         <td>${item.role}</td>
                         <td>${item.type}</td>
-                        <td>${item.status === "Active" ? 
-                            `<span class="active-status">● Active</span>` : 
-                            item.status}</td>
+                        <td>
+                            <span class="status-indicator ${item.status === 'Active' ? 'status-active' : 'status-inactive'}">
+                                ${item.status}
+                            </span>
+                        </td>
                         <td>${item.verified}</td>
                         <td>${item.searching}</td>
                         <td class="${item.closeRate >= 30 ? 'high-rate' : 'low-rate'}">${item.closeRate}%</td>
