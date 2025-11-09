@@ -80,19 +80,48 @@
 			let sessionId = null;
 			let lastTimestamp = 0;
 			let poller = null;
-			// in-memory and persisted state
-			let messagesState = [];
-			const STORAGE_KEY = 'mandate_chat_last';
-			const seen = new Set();
+			let messageIds = new Set(); // track message IDs to prevent duplicates
+
+			// Load any stored session on page load
+			try {
+				const stored = localStorage.getItem('mandateChat');
+				if(stored){
+					const data = JSON.parse(stored);
+					sessionId = data.sessionId;
+					lastTimestamp = data.lastTimestamp;
+					sessionIdInput.value = sessionId;
+					data.messages.forEach(m => {
+						appendMessage(m.role, m.text, m.timestamp);
+						messageIds.add(m.id || m.timestamp);
+					});
+					if(sessionId){
+						sendBtn.disabled = false;
+						agreeBtn.disabled = false;
+						if(!poller){ poller = setInterval(pollOnce, 1500); }
+						pollOnce();
+					}
+				}
+			} catch(e){ console.warn('Failed to load stored chat:', e); }
+
+			// Save chat state when window closes
+			window.addEventListener('beforeunload', function(){
+				if(!sessionId) return;
+				const messages = Array.from(chatLog.children).map(el => ({
+					role: el.getAttribute('data-role'),
+					text: el.querySelector('.body')?.textContent || '',
+					timestamp: el.getAttribute('data-ts')
+				}));
+				localStorage.setItem('mandateChat', JSON.stringify({
+					sessionId,
+					lastTimestamp,
+					messages
+				}));
+			});
 
 			const API_BASE = window.API_BASE || '';
 
-								function appendMessage(role, text, ts){
-				    // dedupe by role+text+ts
-				    const id = (ts ? ts : Date.now()) + '|' + role + '|' + text.slice(0,200);
-				    if(seen.has(id)) return;
-				    seen.add(id);
-				    const msg = document.createElement('div');
+						function appendMessage(role, text, ts){
+							const msg = document.createElement('div');
 							// map roles to classes: assistant -> assistant, buyer/seller -> user/other depending on current role
 							let cls = 'assistant';
 							if(role === 'assistant') cls = 'assistant';
@@ -111,45 +140,12 @@
 							body.className = 'body';
 							body.textContent = text;
 
-										msg.appendChild(meta);
-										msg.appendChild(body);
-										chatLog.appendChild(msg);
-										// Keep focusable log visible
-										msg.scrollIntoView({behavior:'smooth', block:'end'});
-										// persist in-memory and to localStorage
-										const entry = { role, text, ts: ts || Date.now() };
-										messagesState.push(entry);
-										saveHistory();
+							msg.appendChild(meta);
+							msg.appendChild(body);
+							chatLog.appendChild(msg);
+							// Keep focusable log visible
+							msg.scrollIntoView({behavior:'smooth', block:'end'});
 						}
-
-									function saveHistory(){
-										try{
-											const payload = { sessionId, role: roleSelect.value, lastTimestamp, messages: messagesState };
-											localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-										}catch(e){ console.warn('saveHistory failed', e); }
-									}
-
-									function loadHistory(){
-										try{
-											const raw = localStorage.getItem(STORAGE_KEY);
-											if(!raw) return;
-											const parsed = JSON.parse(raw);
-											if(!parsed) return;
-											// restore role if stored
-											if(parsed.role) roleSelect.value = parsed.role;
-											// restore session id (may be null)
-											sessionId = parsed.sessionId || null;
-											lastTimestamp = parsed.lastTimestamp || 0;
-											messagesState = parsed.messages || [];
-											messagesState.forEach(m => appendMessage(m.role, m.text, m.ts));
-											if(sessionId){
-												sessionInfo.textContent = 'Session: ' + sessionId;
-												sendBtn.disabled = false;
-												agreeBtn.disabled = false;
-												if(!poller){ poller = setInterval(pollOnce, 1500); }
-											}
-										}catch(e){ console.warn('loadHistory failed', e); }
-									}
 
 				function setProcessing(isProcessing){
 					sendBtn.disabled = isProcessing;
