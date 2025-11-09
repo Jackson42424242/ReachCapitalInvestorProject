@@ -118,7 +118,7 @@
 				}));
 			});
 
-				const API_BASE = window.API_BASE || 'http://localhost:5500';						function appendMessage(role, text, ts){
+								const API_BASE = window.API_BASE || 'http://localhost:3000';						function appendMessage(role, text, ts){
 							const msg = document.createElement('div');
 							// map roles to classes: assistant -> assistant, buyer/seller -> user/other depending on current role
 							let cls = 'assistant';
@@ -228,25 +228,53 @@
 					input.focus();
 				});
 
-						createJoinBtn.addEventListener('click', async function(e){
-							e.preventDefault();
-							const provided = sessionIdInput.value.trim();
-							try{
-								const resp = await fetch(API_BASE + '/api/chat/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: provided || undefined, role: roleSelect.value }) });
-								const data = await resp.json();
-								sessionId = data.sessionId;
-								sessionInfo.textContent = 'Session: ' + sessionId;
-								sendBtn.disabled = false;
-								agreeBtn.disabled = false;
-								// start polling
-								if(!poller){ poller = setInterval(pollOnce, 1500); }
-								pollOnce();
-							} catch(err) { 
-						console.error(err); 
+				createJoinBtn.addEventListener('click', async function(e){
+					e.preventDefault();
+					const provided = sessionIdInput.value.trim();
+					try {
+						const resp = await fetch(API_BASE + '/api/chat/session', { 
+							method: 'POST', 
+							headers: { 
+								'Content-Type': 'application/json',
+								'Accept': 'application/json'
+							},
+							mode: 'cors', // Explicitly request CORS mode
+							body: JSON.stringify({ 
+								sessionId: provided || undefined, 
+								role: roleSelect.value 
+							})
+						});
+
+						if (!resp.ok) {
+							const errorText = await resp.text();
+							let errorMessage;
+							try {
+								const errorJson = JSON.parse(errorText);
+								errorMessage = errorJson.error || 'Unknown server error';
+							} catch {
+								errorMessage = errorText || `Server error: ${resp.status}`;
+							}
+							throw new Error(errorMessage);
+						}
+
+						const data = await resp.json();
+						if (!data || !data.sessionId) {
+							throw new Error('Invalid server response - no session ID');
+						}
+
+						sessionId = data.sessionId;
+						sessionInfo.textContent = `Session: ${sessionId} (${data.joined ? 'Joined' : 'Created'})`;
+						sendBtn.disabled = false;
+						agreeBtn.disabled = false;
+						// start polling
+						if(!poller){ poller = setInterval(pollOnce, 1500); }
+						pollOnce();
+					} catch(err) { 
+						console.error('Session error:', err); 
 						const errMsg = err.message === 'Failed to fetch' 
-							? 'Could not connect to server. Is the backend running on port 5500?' 
-							: 'Failed to create/join session: ' + err.message;
-						alert(errMsg);
+							? 'Could not connect to server. Is the backend running on port 3000?' 
+							: err.message;
+						alert('Failed to create/join session: ' + errMsg);
 					}
 						});
 
