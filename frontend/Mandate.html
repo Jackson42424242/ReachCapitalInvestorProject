@@ -10,9 +10,11 @@
 		main { max-width: 900px; margin: 0 auto; }
 		.chat-shell { background: #fff; border-radius: 8px; box-shadow: 0 6px 18px rgba(20,20,20,0.06); padding: 1rem; display: flex; flex-direction: column; gap: 1rem; }
 		.chat-log { height: 48vh; overflow: auto; padding: 0.75rem; border: 1px solid #eceff2; border-radius: 6px; background: #fcfdff; }
-		.message { margin: 0.5rem 0; max-width: 85%; padding: 0.6rem 0.75rem; border-radius: 6px; white-space: pre-wrap; }
+		.message { margin: 0.5rem 0; max-width: 85%; padding: 0.6rem 0.75rem; border-radius: 6px; white-space: pre-wrap; position: relative; }
 		.message.user { margin-left: auto; background: #0b74de; color: white; }
-		.message.assistant { margin-right: auto; background: #f1f5f9; color: #111827; }
+		.message.other { margin-right: auto; background: #eef2f7; color: #111827; }
+		.message.assistant { margin-right: auto; background: #f1f5f9; color: #111827; border: 1px dashed #d1d9e0; }
+		.message .meta { display:block; font-size: .75rem; opacity: .8; margin-bottom: .35rem; }
 		.chat-controls { display: flex; gap: 0.5rem; align-items: center; }
 		textarea#chat-input { width: 100%; min-height: 64px; resize: vertical; padding: 0.6rem; border-radius: 6px; border: 1px solid #dfe6ee; font: inherit; }
 		button { padding: 0.6rem 0.9rem; border-radius: 6px; border: none; background: #0069d9; color: #fff; cursor: pointer; }
@@ -24,40 +26,89 @@
 <body>
 	<main>
 		<h1 id="page-title">Mandate — Deal setup assistant</h1>
-		<section class="chat-shell" aria-labelledby="page-title">
-			<div id="chat-log" class="chat-log" role="log" aria-live="polite" aria-atomic="false" tabindex="0">
-				<!-- messages will be appended here -->
-			</div>
-
-			<form id="chat-form" class="chat-controls" aria-label="Chat input" autocomplete="off">
-				<label for="chat-input" class="visually-hidden">Type your deal description</label>
-				<textarea id="chat-input" name="message" placeholder="Describe the deal you're looking for (press Enter to send, Shift+Enter for newline)" aria-describedby="helper"></textarea>
-				<div style="display:flex;flex-direction:column;gap:.5rem;">
-					<button id="send-btn" type="submit">Send</button>
-					<button id="clear-btn" type="button" aria-label="Clear chat">Clear</button>
+			<section class="chat-shell" aria-labelledby="page-title">
+				<div style="display:flex;gap:1rem;align-items:center;justify-content:space-between;">
+					<div>
+						<label for="role-select">Your role:</label>
+						<select id="role-select" aria-label="Select your role">
+							<option value="buyer">Buyer</option>
+							<option value="seller">Seller</option>
+						</select>
+					</div>
+					<div>
+						<label for="session-id">Session ID (leave empty to create new):</label>
+						<input id="session-id" placeholder="session id or leave blank" />
+						<button id="create-join">Create / Join</button>
+					</div>
+					<div id="session-info" style="font-size:.9rem;color:#444"></div>
 				</div>
-			</form>
-			<div id="helper" style="font-size:.9rem;color:#555">Press Enter to send; Shift+Enter to add a newline.</div>
-		</section>
+
+				<div id="chat-log" class="chat-log" role="log" aria-live="polite" aria-atomic="false" tabindex="0">
+					<!-- messages will be appended here -->
+				</div>
+
+				<form id="chat-form" class="chat-controls" aria-label="Chat input" autocomplete="off">
+					<label for="chat-input" class="visually-hidden">Type your deal description</label>
+					<textarea id="chat-input" name="message" placeholder="Describe the deal you're looking for (press Enter to send, Shift+Enter for newline)" aria-describedby="helper"></textarea>
+					<div style="display:flex;flex-direction:column;gap:.5rem;">
+						<button id="send-btn" type="submit" disabled>Send</button>
+						<button id="clear-btn" type="button">Clear</button>
+					</div>
+				</form>
+				<div id="helper" style="font-size:.9rem;color:#555">Press Enter to send; Shift+Enter to add a newline.</div>
+
+				<div style="display:flex;gap:1rem;margin-top:.5rem;align-items:center;">
+					<div id="current-terms" style="flex:1;color:#222"></div>
+					<button id="agree-btn" disabled>Agree to Terms</button>
+				</div>
+			</section>
 
 		<script>
 			(function(){
-				const chatLog = document.getElementById('chat-log');
-				const input = document.getElementById('chat-input');
-				const form = document.getElementById('chat-form');
-				const sendBtn = document.getElementById('send-btn');
-				const clearBtn = document.getElementById('clear-btn');
+			const chatLog = document.getElementById('chat-log');
+			const input = document.getElementById('chat-input');
+			const form = document.getElementById('chat-form');
+			const sendBtn = document.getElementById('send-btn');
+			const clearBtn = document.getElementById('clear-btn');
+			const roleSelect = document.getElementById('role-select');
+			const sessionIdInput = document.getElementById('session-id');
+			const createJoinBtn = document.getElementById('create-join');
+			const sessionInfo = document.getElementById('session-info');
+			const currentTermsEl = document.getElementById('current-terms');
+			const agreeBtn = document.getElementById('agree-btn');
 
-				function appendMessage(role, text){
-					const msg = document.createElement('div');
-					msg.className = 'message ' + (role === 'user' ? 'user' : 'assistant');
-					msg.setAttribute('data-role', role);
-					// Use textContent to avoid XSS
-					msg.textContent = text;
-					chatLog.appendChild(msg);
-					// Keep focusable log visible
-					msg.scrollIntoView({behavior:'smooth', block:'end'});
-				}
+			let sessionId = null;
+			let lastTimestamp = 0;
+			let poller = null;
+
+			const API_BASE = window.API_BASE || '';
+
+						function appendMessage(role, text, ts){
+							const msg = document.createElement('div');
+							// map roles to classes: assistant -> assistant, buyer/seller -> user/other depending on current role
+							let cls = 'assistant';
+							if(role === 'assistant') cls = 'assistant';
+							else if(role === roleSelect.value) cls = 'user';
+							else cls = 'other';
+							msg.className = 'message ' + cls;
+							msg.setAttribute('data-role', role);
+
+							const meta = document.createElement('div');
+							meta.className = 'meta';
+							const who = role === 'assistant' ? 'MandateBot' : (role === roleSelect.value ? 'You' : role.charAt(0).toUpperCase() + role.slice(1));
+							const timeStr = ts ? new Date(ts).toLocaleTimeString() : new Date().toLocaleTimeString();
+							meta.textContent = who + ' — ' + timeStr;
+
+							const body = document.createElement('div');
+							body.className = 'body';
+							body.textContent = text;
+
+							msg.appendChild(meta);
+							msg.appendChild(body);
+							chatLog.appendChild(msg);
+							// Keep focusable log visible
+							msg.scrollIntoView({behavior:'smooth', block:'end'});
+						}
 
 				function setProcessing(isProcessing){
 					sendBtn.disabled = isProcessing;
@@ -66,40 +117,57 @@
 					else { sendBtn.textContent = 'Send'; }
 				}
 
-				async function sendMessage(userText){
-					setProcessing(true);
-					try {
-						// Simple payload compatible with backend used in the project
-						const payload = { messages: [{ role: 'user', content: userText }] };
-						const resp = await fetch('/api/llm/deals', {
-							method: 'POST',
-							headers: { 'Content-Type': 'application/json' },
-							body: JSON.stringify(payload)
-						});
-
-						if(!resp.ok){
-							const t = await resp.text();
-							throw new Error('Server error: ' + resp.status + ' ' + t);
+						async function sendMessage(userText){
+							if(!sessionId) return alert('Create or join a session first');
+							setProcessing(true);
+							try {
+								const resp = await fetch(API_BASE + '/api/chat/message', {
+									method: 'POST',
+									headers: { 'Content-Type': 'application/json' },
+									body: JSON.stringify({ sessionId, role: roleSelect.value, message: userText })
+								});
+								if(!resp.ok) throw new Error('Send failed');
+								const data = await resp.json();
+								// server already returns mediated message
+								if(data && data.message) appendMessage('assistant', data.message);
+								if(data && data.suggestedDeal) currentTermsEl.textContent = `Terms: ${data.suggestedDeal.type} $${data.suggestedDeal.amount} — ${data.suggestedDeal.terms}`;
+								// after sending, immediately poll for new messages
+								pollOnce();
+							} catch (err){
+								console.error(err);
+								appendMessage('assistant', 'An error occurred while sending: ' + (err.message || err));
+							} finally { setProcessing(false); }
 						}
 
-						const data = await resp.json();
-						// expected `{ message: string, suggestedDeal?: {...} }`
-						if(data && data.message){
-							appendMessage('assistant', data.message);
-						} else if(data && data.suggestedDeal){
-							appendMessage('assistant', JSON.stringify(data.suggestedDeal, null, 2));
-						} else {
-							appendMessage('assistant', 'No response from assistant.');
+						async function pollOnce(){
+							if(!sessionId) return;
+							try{
+								const resp = await fetch(API_BASE + '/api/chat/messages?sessionId=' + encodeURIComponent(sessionId) + '&since=' + lastTimestamp);
+								if(!resp.ok) return;
+								const data = await resp.json();
+								if(data && data.messages && Array.isArray(data.messages)){
+									data.messages.forEach(m => {
+										// show mediated message as assistant, and also show original as sender for clarity
+										appendMessage(m.from, m.original);
+										appendMessage('assistant', m.mediated);
+										lastTimestamp = Math.max(lastTimestamp, m.timestamp || lastTimestamp);
+									});
+								}
+								if(data && data.currentTerms){ currentTermsEl.textContent = 'Current Terms: ' + data.currentTerms; agreeBtn.disabled = false; }
+								if(data && data.users){
+									sessionInfo.textContent = `Buyer agreed: ${data.users.buyer.agreed ? 'yes' : 'no'} — Seller agreed: ${data.users.seller.agreed ? 'yes' : 'no'}`;
+									if(data.users.buyer.agreed && data.users.seller.agreed){
+										appendMessage('assistant', 'Both parties have agreed. Mandate is accepted.');
+										agreeBtn.disabled = true;
+										sendBtn.disabled = true;
+										clearInterval(poller);
+										poller = null;
+									}
+								}
+							}catch(err){ console.error('poll error', err); }
 						}
-					} catch (err){
-						console.error(err);
-						appendMessage('assistant', 'An error occurred: ' + (err.message || err));
-					} finally {
-						setProcessing(false);
-					}
-				}
 
-				form.addEventListener('submit', function(e){
+						form.addEventListener('submit', function(e){
 					e.preventDefault();
 					const text = input.value.trim();
 					if(!text) return;
@@ -124,6 +192,32 @@
 					input.value = '';
 					input.focus();
 				});
+
+						createJoinBtn.addEventListener('click', async function(e){
+							e.preventDefault();
+							const provided = sessionIdInput.value.trim();
+							try{
+								const resp = await fetch(API_BASE + '/api/chat/session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId: provided || undefined, role: roleSelect.value }) });
+								const data = await resp.json();
+								sessionId = data.sessionId;
+								sessionInfo.textContent = 'Session: ' + sessionId;
+								sendBtn.disabled = false;
+								agreeBtn.disabled = false;
+								// start polling
+								if(!poller){ poller = setInterval(pollOnce, 1500); }
+								pollOnce();
+							}catch(err){ console.error(err); alert('Failed to create/join session'); }
+						});
+
+						agreeBtn.addEventListener('click', async function(){
+							if(!sessionId) return alert('Join a session first');
+							try{
+								const resp = await fetch(API_BASE + '/api/chat/agree', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sessionId, role: roleSelect.value }) });
+								const data = await resp.json();
+								if(data.bothAgree){ appendMessage('assistant', 'Agreement complete: ' + (data.currentTerms || '')); }
+								pollOnce();
+							}catch(err){ console.error(err); }
+						});
 
 				// Small accessibility helpers: announce when page loaded
 				window.addEventListener('load', function(){
