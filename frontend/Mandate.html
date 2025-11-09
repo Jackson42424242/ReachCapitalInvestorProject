@@ -118,9 +118,7 @@
 				}));
 			});
 
-			const API_BASE = window.API_BASE || '';
-
-						function appendMessage(role, text, ts){
+				const API_BASE = window.API_BASE || 'http://localhost:5500';						function appendMessage(role, text, ts){
 							const msg = document.createElement('div');
 							// map roles to classes: assistant -> assistant, buyer/seller -> user/other depending on current role
 							let cls = 'assistant';
@@ -243,7 +241,13 @@
 								// start polling
 								if(!poller){ poller = setInterval(pollOnce, 1500); }
 								pollOnce();
-							}catch(err){ console.error(err); alert('Failed to create/join session'); }
+							} catch(err) { 
+						console.error(err); 
+						const errMsg = err.message === 'Failed to fetch' 
+							? 'Could not connect to server. Is the backend running on port 5500?' 
+							: 'Failed to create/join session: ' + err.message;
+						alert(errMsg);
+					}
 						});
 
 						agreeBtn.addEventListener('click', async function(){

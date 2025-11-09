@@ -73,5 +73,5 @@ app.get('/api/chat/status', (req, res) => {
   return res.json({ users: s.users, currentTerms: s.currentTerms, createdAt: s.createdAt });
 });
 
-const PORT = process.env.PORT || 7777;
+const PORT = process.env.PORT || 5500;
 app.listen(PORT, () => console.log('Mandate backend stub running on port', PORT));
