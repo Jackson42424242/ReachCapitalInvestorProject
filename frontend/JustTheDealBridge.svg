@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-label="DealBridge logo">
+  <!-- Transparent background by default -->
+  <defs>
+    <linearGradient id="bridgeGrad" x1="0" x2="1">
+      <stop offset="0%" stop-color="#1E88E5"/>
+      <stop offset="100%" stop-color="#0B74DE"/>
+    </linearGradient>
+    <linearGradient id="handGrad" x1="0" x2="1">
+      <stop offset="0%" stop-color="#1E88E5"/>
+      <stop offset="100%" stop-color="#00A0E6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Simple stylized bridge -->
+  <g transform="translate(0,60)">
+    <path d="M60 300 C200 80, 400 80, 540 300 L60 300 Z" fill="url(#bridgeGrad)" opacity="0.95"/>
+    <path d="M660 300 C800 80, 1000 80, 1140 300 L660 300 Z" fill="url(#bridgeGrad)" opacity="0.95"/>
+    <rect x="40" y="300" width="1120" height="60" rx="12" fill="#0B74DE" opacity="0.95"/>
+    <!-- vertical supports -->
+    <rect x="180" y="200" width="20" height="120" fill="#0A5EA8"/>
+    <rect x="520" y="200" width="20" height="120" fill="#0A5EA8"/>
+    <rect x="860" y="200" width="20" height="120" fill="#0A5EA8"/>
+  </g>
+
+  <!-- Handshake icon centered under bridge -->
+  <g transform="translate(250,260) scale(0.9)">
+    <!-- left hand -->
+    <path d="M120 160 C90 140, 60 120, 40 110 C20 100, 18 78, 36 66 C54 54, 92 62, 110 76 C128 90, 142 104, 160 120 L120 160 Z" fill="url(#handGrad)"/>
+    <!-- right hand -->
+    <path d="M280 160 C310 140, 340 120, 360 110 C380 100, 382 78, 364 66 C346 54, 308 62, 290 76 C272 90, 258 104, 240 120 L280 160 Z" fill="url(#handGrad)"/>
+    <!-- clasp center -->
+    <path d="M160 128 C180 120, 220 120, 240 128 C230 136, 200 140, 180 140 C170 140, 165 136, 160 128 Z" fill="#FFFFFF" opacity="0.9"/>
+    <!-- outline for clarity -->
+    <path d="M120 160 C90 140, 60 120, 40 110 C20 100, 18 78, 36 66 C54 54, 92 62, 110 76 C128 90, 142 104, 160 120 L120 160 Z" fill="none" stroke="#0A5EA8" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M280 160 C310 140, 340 120, 360 110 C380 100, 382 78, 364 66 C346 54, 308 62, 290 76 C272 90, 258 104, 240 120 L280 160 Z" fill="none" stroke="#0A5EA8" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Optional small text mark (kept subtle) -->
+  <text x="600" y="560" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="28" fill="#0B74DE" opacity="0.85">DealBridge</text>
+</svg>

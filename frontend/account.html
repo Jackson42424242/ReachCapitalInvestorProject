@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Account — DealBridge</title>
+  <link rel="stylesheet" href="Styles.css">
+  <link rel="icon" type="image/png" href="DealBridge.png">
+  <style>
+    .wrap{max-width:760px;margin:28px auto;padding:18px;background:#fff;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.06)}
+    form{display:flex;flex-direction:column;gap:12px}
+    .profile{display:flex;flex-direction:column;gap:8px}
+    .small{font-size:0.9rem;color:#555}
+    button{padding:8px 12px;border-radius:6px;border:none;background:#0069d9;color:#fff}
+  </style>
+</head>
+<body>
+  <header style="display:flex;align-items:center;gap:16px;padding:12px 24px;">
+    <img src="DealBridge.png" alt="DealBridge" style="height:40px">
+    <h2>DealBridge — Account</h2>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <div id="signedOut">
+        <p class="small">Sign in to view your account.</p>
+        <form id="loginForm">
+          <label for="loginEmail">Email</label>
+          <input id="loginEmail" type="email" required>
+          <label for="loginPass">Password</label>
+          <input id="loginPass" type="password" required>
+          <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+            <button type="submit">Sign in</button>
+            <a href="signup.html">Create account</a>
+          </div>
+        </form>
+        <div id="loginMsg" class="small" aria-live="polite"></div>
+      </div>
+
+      <div id="profile" class="profile hidden" aria-live="polite">
+        <h3 id="profileName"></h3>
+        <div class="small" id="profileEmail"></div>
+        <div class="small" id="profileRole"></div>
+        <div class="small" id="profileCreated"></div>
+        <div style="margin-top:12px;">
+          <button id="signOutBtn">Sign out</button>
+          <button id="deleteBtn" style="background:#c0392b;margin-left:8px">Delete account</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    function loadUsers(){ try{ return JSON.parse(localStorage.getItem('DealBridgeUsers')||'[]') }catch(e){return []} }
+    function saveUsers(u){ localStorage.setItem('DealBridgeUsers', JSON.stringify(u)); }
+
+    const loginForm = document.getElementById('loginForm');
+    const loginMsg = document.getElementById('loginMsg');
+    const signedOut = document.getElementById('signedOut');
+    const profile = document.getElementById('profile');
+
+    const query = new URLSearchParams(window.location.search);
+    const prefillEmail = query.get('email');
+    if(prefillEmail) document.getElementById('loginEmail').value = prefillEmail;
+
+    function showProfile(user){
+      document.getElementById('profileName').textContent = user.name;
+      document.getElementById('profileEmail').textContent = user.email;
+      document.getElementById('profileRole').textContent = 'Role: ' + user.role;
+      document.getElementById('profileCreated').textContent = 'Member since: ' + new Date(user.createdAt).toLocaleString();
+      signedOut.classList.add('hidden');
+      profile.classList.remove('hidden');
+      // store logged in user
+      localStorage.setItem('DealBridgeCurrentUser', user.email);
+    }
+
+    function hideProfile(){ signedOut.classList.remove('hidden'); profile.classList.add('hidden'); localStorage.removeItem('DealBridgeCurrentUser'); }
+
+    // If user is already signed in, show profile
+    const current = localStorage.getItem('DealBridgeCurrentUser');
+    if(current){
+      const user = loadUsers().find(u=>u.email===current);
+      if(user) showProfile(user);
+    }
+
+    // lightweight hash (same as signup) to validate
+    async function hash(text){
+      if(window.crypto && window.crypto.subtle){
+        const enc = new TextEncoder();
+        const data = enc.encode(text);
+        const hashBuf = await crypto.subtle.digest('SHA-256', data);
+        const hashArr = Array.from(new Uint8Array(hashBuf));
+        return hashArr.map(b => b.toString(16).padStart(2,'0')).join('');
+      }
+      return btoa(text);
+    }
+
+    loginForm.addEventListener('submit', async function(e){
+      e.preventDefault();
+      loginMsg.textContent = '';
+      const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+      const pass = document.getElementById('loginPass').value;
+      const users = loadUsers();
+      const user = users.find(u=>u.email===email);
+      if(!user){ loginMsg.textContent = 'No account found for that email.'; return; }
+      const passHash = await hash(pass);
+      if(passHash !== user.passwordHash){ loginMsg.textContent = 'Incorrect password.'; return; }
+      showProfile(user);
+    });
+
+    document.getElementById('signOutBtn').addEventListener('click', function(){ hideProfile(); });
+    document.getElementById('deleteBtn').addEventListener('click', function(){
+      if(!confirm('Delete your account? This cannot be undone.')) return;
+      const email = localStorage.getItem('DealBridgeCurrentUser');
+      let users = loadUsers();
+      users = users.filter(u=>u.email!==email);
+      saveUsers(users);
+      hideProfile();
+      alert('Account deleted.');
+    });
+  </script>
+</body>
+</html>

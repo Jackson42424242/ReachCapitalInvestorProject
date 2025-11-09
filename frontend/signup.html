@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Sign Up — DealBridge</title>
+  <link rel="stylesheet" href="Styles.css">
+  <link rel="icon" type="image/png" href="DealBridge.png">
+  <style>
+    .container{max-width:680px;margin:28px auto;padding:18px;background:#fff;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,0.06)}
+    form{display:flex;flex-direction:column;gap:12px}
+    label{font-weight:600}
+    input,select{padding:10px;border:1px solid #00bfff;border-radius:6px}
+    .actions{display:flex;gap:10px;align-items:center}
+    .note{font-size:0.9rem;color:#444}
+  </style>
+</head>
+<body>
+  <header style="display:flex;align-items:center;gap:16px;padding:12px 24px;">
+    <img src="DealBridge.png" alt="DealBridge" style="height:40px">
+    <h2>DealBridge — Create account</h2>
+  </header>
+
+  <main>
+    <div class="container">
+      <p>Create an account to save your profile and preferences.</p>
+      <form id="signupForm">
+        <div>
+          <label for="name">Full name</label>
+          <input id="name" name="name" type="text" required placeholder="Jane Doe">
+        </div>
+        <div>
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" required placeholder="you@example.com">
+        </div>
+        <div>
+          <label for="role">Role</label>
+          <select id="role" name="role">
+            <option value="Buyer">Buyer</option>
+            <option value="Seller">Seller</option>
+          </select>
+        </div>
+        <div>
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" required placeholder="Choose a strong password">
+        </div>
+        <div>
+          <label for="confirm">Confirm password</label>
+          <input id="confirm" name="confirm" type="password" required placeholder="Repeat password">
+        </div>
+
+        <div class="actions">
+          <button type="submit">Create account</button>
+          <a href="account.html">Already have an account? Sign in</a>
+        </div>
+        <div id="msg" class="note" aria-live="polite"></div>
+      </form>
+    </div>
+  </main>
+
+  <script>
+    // Simple client-side account storage using localStorage.
+    // NOTE: This is for prototyping only. Do not store plain passwords in production.
+
+    function loadUsers(){
+      try{ return JSON.parse(localStorage.getItem('DealBridgeUsers')||'[]') }catch(e){return []}
+    }
+    function saveUsers(users){ localStorage.setItem('DealBridgeUsers', JSON.stringify(users)); }
+
+    document.getElementById('signupForm').addEventListener('submit', async function(e){
+      e.preventDefault();
+      const name = document.getElementById('name').value.trim();
+      const email = document.getElementById('email').value.trim().toLowerCase();
+      const role = document.getElementById('role').value;
+      const password = document.getElementById('password').value;
+      const confirm = document.getElementById('confirm').value;
+      const msg = document.getElementById('msg');
+      msg.textContent = '';
+
+      if(!name || !email || !password) { msg.textContent = 'Please fill all required fields.'; return; }
+      if(password !== confirm){ msg.textContent = 'Passwords do not match.'; return; }
+
+      const users = loadUsers();
+      if(users.find(u => u.email === email)){ msg.textContent = 'An account with this email already exists.'; return; }
+
+      // Lightweight client-side password hashing using SubtleCrypto (SHA-256) if available
+      async function hash(text){
+        if(window.crypto && window.crypto.subtle){
+          const enc = new TextEncoder();
+          const data = enc.encode(text);
+          const hashBuf = await crypto.subtle.digest('SHA-256', data);
+          const hashArr = Array.from(new Uint8Array(hashBuf));
+          return hashArr.map(b => b.toString(16).padStart(2,'0')).join('');
+        }
+        // fallback (not secure) - base64
+        return btoa(text);
+      }
+
+      const passwordHash = await hash(password);
+      const newUser = { id: Date.now(), name, email, role, passwordHash, createdAt: new Date().toISOString() };
+      users.push(newUser);
+      saveUsers(users);
+
+      msg.textContent = 'Account created. Redirecting to account page...';
+      setTimeout(()=>{ window.location.href = 'account.html?email='+encodeURIComponent(email); }, 900);
+    });
+  </script>
+</body>
+</html>
