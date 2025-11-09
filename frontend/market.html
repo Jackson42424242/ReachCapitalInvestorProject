@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/png" href="DealBridge.png">
     <title>AI Mandate Platform | Marketplace</title>
     <link rel="stylesheet" href="Styles.css">
     <style>
@@ -28,19 +29,47 @@
         thead {
             background-color: rgba(0,191,255,0.2);
         }
+        .filters {
+            background: rgba(0,191,255,0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        select, input {
+            padding: 8px;
+            border: 1px solid #00bfff;
+            border-radius: 4px;
+            background: white;
+        }
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
 
 <header>
-    <h1>Marketplace</h1>
-    <nav>
-        <ul>
-            <li><a href="index.html">Home</a></li>
-            <li><a href="about.html">About</a></li>
-            <li><a href="market.html">Marketplace</a></li>
-        </ul>
-    </nav>
+    <div class="header-content" style="display: flex; align-items: center; gap: 20px;">
+        <img src="DealBridge.png" alt="DealBridge Logo" style="height: 50px; width: auto;">
+        <div>
+            <h1>Marketplace</h1>
+            <nav>
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="market.html">Marketplace</a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
 </header>
 
 <main>
@@ -48,7 +77,53 @@
         <h2>Available Buyers & Sellers</h2>
         <p>Browse verified partners ready to engage in trusted AI-mandated transactions.</p>
 
-        <table>
+        <div class="filters">
+            <div class="filter-group">
+                <label for="roleFilter">Role:</label>
+                <select id="roleFilter">
+                    <option value="all">All</option>
+                    <option value="Buyer">Buyers</option>
+                    <option value="Seller">Sellers</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="statusFilter">Status:</label>
+                <select id="statusFilter">
+                    <option value="all">All</option>
+                    <option value="Active">Active</option>
+                    <option value="Verified">Verified</option>
+                    <option value="Pending">Pending</option>
+                    <option value="New">New</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="verifiedFilter">Verification:</label>
+                <select id="verifiedFilter">
+                    <option value="all">All</option>
+                    <option value="Yes">Verified Only</option>
+                    <option value="No">Unverified Only</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="activeDealsFilter">Deal Status:</label>
+                <select id="activeDealsFilter">
+                    <option value="all">All</option>
+                    <option value="Yes">Actively Looking</option>
+                    <option value="No">Not Looking</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="minCloseRate">Min. Close Rate:</label>
+                <select id="minCloseRate">
+                    <option value="0">All</option>
+                    <option value="20">20% or higher</option>
+                    <option value="30">30% or higher</option>
+                    <option value="40">40% or higher</option>
+                </select>
+            </div>
+        </div>
+
+        <table id="marketTable">
             <thead>
                 <tr>
                     <th>Name</th>
@@ -60,54 +135,78 @@
                     <th>% of Deals Closed</th>
                 </tr>
             </thead>
-            <tbody>
-                <tr>
-                    <td>Lara Vance</td>
-                    <td>Buyer</td>
-                    <td>Digital Artwork</td>
-                    <td>Active</td>
-                    <td>Yes</td>
-                    <td>Yes</td>
-                    <td class="high-rate">36%</td>
-                </tr>
-                <tr>
-                    <td>Ethan Cross</td>
-                    <td>Seller</td>
-                    <td>AI Model Training Data</td>
-                    <td>Pending</td>
-                    <td>Yes</td>
-                    <td>No</td>
-                    <td class="low-rate">15%</td>
-                </tr>
-                <tr>
-                    <td>Yara Singh</td>
-                    <td>Buyer</td>
-                    <td>Cybersecurity License</td>
-                    <td>Verified</td>
-                    <td>Yes</td>
-                    <td>Yes</td>
-                    <td class="high-rate">48%</td>
-                </tr>
-                <tr>
-                    <td>Marcus Osei</td>
-                    <td>Seller</td>
-                    <td>Robotics Components</td>
-                    <td>Active</td>
-                    <td>No</td>
-                    <td>Yes</td>
-                    <td class="low-rate">10%</td>
-                </tr>
-                <tr>
-                    <td>Nadia Petrova</td>
-                    <td>Seller</td>
-                    <td>Blockchain Verification Service</td>
-                    <td>New</td>
-                    <td>No</td>
-                    <td>No</td>
-                    <td class="high-rate">27%</td>
-                </tr>
+            <tbody id="tableBody">
             </tbody>
         </table>
+
+        <script>
+            // Database of buyers and sellers
+            const marketData = [
+                { name: "Lara Vance", role: "Buyer", type: "Digital Artwork", status: "Active", verified: "Yes", searching: "Yes", closeRate: 36 },
+                { name: "Ethan Cross", role: "Seller", type: "AI Model Training Data", status: "Pending", verified: "Yes", searching: "No", closeRate: 15 },
+                { name: "Yara Singh", role: "Buyer", type: "Cybersecurity License", status: "Verified", verified: "Yes", searching: "Yes", closeRate: 48 },
+                { name: "Marcus Osei", role: "Seller", type: "Robotics Components", status: "Active", verified: "No", searching: "Yes", closeRate: 10 },
+                { name: "Nadia Petrova", role: "Seller", type: "Blockchain Service", status: "New", verified: "No", searching: "No", closeRate: 27 },
+                { name: "Alex Chen", role: "Buyer", type: "Machine Learning Models", status: "Active", verified: "Yes", searching: "Yes", closeRate: 42 },
+                { name: "Sarah O'Connor", role: "Seller", type: "IoT Solutions", status: "Verified", verified: "Yes", searching: "Yes", closeRate: 55 },
+                { name: "Raj Patel", role: "Buyer", type: "Data Analytics Tools", status: "Active", verified: "Yes", searching: "No", closeRate: 31 },
+                { name: "Elena Rodriguez", role: "Seller", type: "Cloud Services", status: "New", verified: "No", searching: "Yes", closeRate: 18 },
+                { name: "James Wilson", role: "Buyer", type: "Security Software", status: "Pending", verified: "Yes", searching: "Yes", closeRate: 25 },
+                { name: "Maya Chang", role: "Seller", type: "AI Algorithms", status: "Active", verified: "Yes", searching: "Yes", closeRate: 44 },
+                { name: "Thomas Weber", role: "Buyer", type: "Quantum Computing", status: "Verified", verified: "No", searching: "No", closeRate: 22 },
+                { name: "Aisha Hassan", role: "Seller", type: "Digital Infrastructure", status: "Active", verified: "Yes", searching: "Yes", closeRate: 38 },
+                { name: "Viktor Novak", role: "Buyer", type: "Automation Systems", status: "New", verified: "Yes", searching: "Yes", closeRate: 33 },
+                { name: "Lisa Thompson", role: "Seller", type: "Big Data Solutions", status: "Active", verified: "Yes", searching: "No", closeRate: 47 }
+            ];
+
+            // Function to render the table
+            function renderTable(data) {
+                const tbody = document.getElementById('tableBody');
+                tbody.innerHTML = '';
+
+                // Show only first 10 results after filtering
+                data.slice(0, 10).forEach(item => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.name}</td>
+                        <td>${item.role}</td>
+                        <td>${item.type}</td>
+                        <td>${item.status}</td>
+                        <td>${item.verified}</td>
+                        <td>${item.searching}</td>
+                        <td class="${item.closeRate >= 30 ? 'high-rate' : 'low-rate'}">${item.closeRate}%</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+
+            // Function to filter the data
+            function filterData() {
+                let filteredData = marketData.filter(item => {
+                    const roleFilter = document.getElementById('roleFilter').value;
+                    const statusFilter = document.getElementById('statusFilter').value;
+                    const verifiedFilter = document.getElementById('verifiedFilter').value;
+                    const activeDealsFilter = document.getElementById('activeDealsFilter').value;
+                    const minCloseRate = parseInt(document.getElementById('minCloseRate').value);
+
+                    return (roleFilter === 'all' || item.role === roleFilter) &&
+                           (statusFilter === 'all' || item.status === statusFilter) &&
+                           (verifiedFilter === 'all' || item.verified === verifiedFilter) &&
+                           (activeDealsFilter === 'all' || item.searching === activeDealsFilter) &&
+                           (item.closeRate >= minCloseRate);
+                });
+
+                renderTable(filteredData);
+            }
+
+            // Add event listeners to all filters
+            document.querySelectorAll('select').forEach(select => {
+                select.addEventListener('change', filterData);
+            });
+
+            // Initial render
+            renderTable(marketData);
+        </script>
     </section>
 
     <section style="text-align:center;">
@@ -116,7 +215,10 @@
 </main>
 
 <footer>
-    <p>&copy; 2025 AI Mandate Program. All rights reserved.</p>
+    <div style="display: flex; align-items: center; justify-content: center; gap: 20px; margin-bottom: 20px;">
+        <img src="DealBridge.png" alt="DealBridge Logo" style="height: 30px; width: auto;">
+        <p>&copy; 2025 DealBridge AI Mandate Program. All rights reserved.</p>
+    </div>
 </footer>
 
 </body>
