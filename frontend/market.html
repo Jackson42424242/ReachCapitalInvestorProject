@@ -52,6 +52,35 @@
         .hidden {
             display: none;
         }
+        /* Styles for active rows */
+        .active-row {
+            transition: background-color 0.2s;
+        }
+        .active-row:hover {
+            background-color: rgba(0,191,255,0.1);
+        }
+        .active-status {
+            color: #00b300;
+            font-weight: bold;
+        }
+        /* Add subtle animation to indicate clickable */
+        .active-row td {
+            position: relative;
+        }
+        .active-row:hover td::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: 2px;
+            background-color: #00bfff;
+            transform: scaleX(0);
+            animation: slideIn 0.3s forwards;
+        }
+        @keyframes slideIn {
+            to { transform: scaleX(1); }
+        }
     </style>
 </head>
 <body>
@@ -93,9 +122,7 @@
                 <select id="statusFilter">
                     <option value="all">All</option>
                     <option value="Active">Active</option>
-                    <option value="Verified">Verified</option>
-                    <option value="Pending">Pending</option>
-                    <option value="New">New</option>
+                    <option value="Inactive">Inactive</option>
                 </select>
             </div>
             <div class="filter-group">
@@ -145,19 +172,19 @@
             // Database of buyers and sellers
             const marketData = [
                 { name: "Lara Vance", role: "Buyer", type: "Digital Artwork", status: "Active", verified: "Yes", searching: "Yes", closeRate: 36 },
-                { name: "Ethan Cross", role: "Seller", type: "AI Model Training Data", status: "Pending", verified: "Yes", searching: "No", closeRate: 15 },
-                { name: "Yara Singh", role: "Buyer", type: "Cybersecurity License", status: "Verified", verified: "Yes", searching: "Yes", closeRate: 48 },
+                { name: "Ethan Cross", role: "Seller", type: "AI Model Training Data", status: "Inactive", verified: "Yes", searching: "No", closeRate: 15 },
+                { name: "Yara Singh", role: "Buyer", type: "Cybersecurity License", status: "Active", verified: "Yes", searching: "Yes", closeRate: 48 },
                 { name: "Marcus Osei", role: "Seller", type: "Robotics Components", status: "Active", verified: "No", searching: "Yes", closeRate: 10 },
-                { name: "Nadia Petrova", role: "Seller", type: "Blockchain Service", status: "New", verified: "No", searching: "No", closeRate: 27 },
+                { name: "Nadia Petrova", role: "Seller", type: "Blockchain Service", status: "Inactive", verified: "No", searching: "No", closeRate: 27 },
                 { name: "Alex Chen", role: "Buyer", type: "Machine Learning Models", status: "Active", verified: "Yes", searching: "Yes", closeRate: 42 },
-                { name: "Sarah O'Connor", role: "Seller", type: "IoT Solutions", status: "Verified", verified: "Yes", searching: "Yes", closeRate: 55 },
+                { name: "Sarah O'Connor", role: "Seller", type: "IoT Solutions", status: "Active", verified: "Yes", searching: "Yes", closeRate: 55 },
                 { name: "Raj Patel", role: "Buyer", type: "Data Analytics Tools", status: "Active", verified: "Yes", searching: "No", closeRate: 31 },
-                { name: "Elena Rodriguez", role: "Seller", type: "Cloud Services", status: "New", verified: "No", searching: "Yes", closeRate: 18 },
-                { name: "James Wilson", role: "Buyer", type: "Security Software", status: "Pending", verified: "Yes", searching: "Yes", closeRate: 25 },
+                { name: "Elena Rodriguez", role: "Seller", type: "Cloud Services", status: "Inactive", verified: "No", searching: "Yes", closeRate: 18 },
+                { name: "James Wilson", role: "Buyer", type: "Security Software", status: "Inactive", verified: "Yes", searching: "Yes", closeRate: 25 },
                 { name: "Maya Chang", role: "Seller", type: "AI Algorithms", status: "Active", verified: "Yes", searching: "Yes", closeRate: 44 },
-                { name: "Thomas Weber", role: "Buyer", type: "Quantum Computing", status: "Verified", verified: "No", searching: "No", closeRate: 22 },
+                { name: "Thomas Weber", role: "Buyer", type: "Quantum Computing", status: "Inactive", verified: "No", searching: "No", closeRate: 22 },
                 { name: "Aisha Hassan", role: "Seller", type: "Digital Infrastructure", status: "Active", verified: "Yes", searching: "Yes", closeRate: 38 },
-                { name: "Viktor Novak", role: "Buyer", type: "Automation Systems", status: "New", verified: "Yes", searching: "Yes", closeRate: 33 },
+                { name: "Viktor Novak", role: "Buyer", type: "Automation Systems", status: "Active", verified: "Yes", searching: "Yes", closeRate: 33 },
                 { name: "Lisa Thompson", role: "Seller", type: "Big Data Solutions", status: "Active", verified: "Yes", searching: "No", closeRate: 47 }
             ];
 
@@ -169,11 +196,31 @@
                 // Show only first 10 results after filtering
                 data.slice(0, 10).forEach(item => {
                     const row = document.createElement('tr');
+                    
+                    // If status is "Active", make the entire row clickable and add visual hints
+                    if (item.status === "Active") {
+                        row.style.cursor = 'pointer';
+                        row.classList.add('active-row');
+                        row.title = `Click to start mandate with ${item.name}`;
+                        row.onclick = () => {
+                            // Store the selected partner info for the mandate interface
+                            localStorage.setItem('selectedPartner', JSON.stringify({
+                                name: item.name,
+                                role: item.role,
+                                type: item.type,
+                                closeRate: item.closeRate
+                            }));
+                            window.location.href = 'Mandate.html';
+                        };
+                    }
+                    
                     row.innerHTML = `
                         <td>${item.name}</td>
                         <td>${item.role}</td>
                         <td>${item.type}</td>
-                        <td>${item.status}</td>
+                        <td>${item.status === "Active" ? 
+                            `<span class="active-status">● Active</span>` : 
+                            item.status}</td>
                         <td>${item.verified}</td>
                         <td>${item.searching}</td>
                         <td class="${item.closeRate >= 30 ? 'high-rate' : 'low-rate'}">${item.closeRate}%</td>

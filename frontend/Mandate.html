@@ -31,6 +31,15 @@
 			<h1 id="page-title">Mandate — Deal setup assistant</h1>
 		</div>
 			<section class="chat-shell" aria-labelledby="page-title">
+				<div id="partner-info" class="partner-info" style="margin-bottom:1rem;padding:1rem;background:#f8f9fa;border-radius:6px;display:none;">
+					<h3 style="margin:0 0 0.5rem 0;color:#1a1a1a">Selected Partner</h3>
+					<div style="display:grid;grid-template-columns:auto 1fr;gap:0.5rem 1rem;color:#333">
+						<strong>Name:</strong><span id="partner-name"></span>
+						<strong>Role:</strong><span id="partner-role"></span>
+						<strong>Transaction Type:</strong><span id="partner-type"></span>
+						<strong>Success Rate:</strong><span id="partner-rate"></span>
+					</div>
+				</div>
 				<div style="display:flex;gap:1rem;align-items:center;justify-content:space-between;">
 					<div>
 						<label for="role-select">Your role:</label>
@@ -44,7 +53,7 @@
 						<input id="session-id" placeholder="session id or leave blank" />
 						<button id="create-join">Create / Join</button>
 					</div>
-					<div id="session-info" style="font-size:.9rem;color:#444"></div>
+					<div id="session-info" style="font-size:.9rem;color:#1a1a1a"></div>
 				</div>
 
 				<div id="chat-log" class="chat-log" role="log" aria-live="polite" aria-atomic="false" tabindex="0">
@@ -80,6 +89,29 @@
 			const sessionInfo = document.getElementById('session-info');
 			const currentTermsEl = document.getElementById('current-terms');
 			const agreeBtn = document.getElementById('agree-btn');
+			const partnerInfo = document.getElementById('partner-info');
+
+			// Load and display partner info if coming from marketplace
+			const selectedPartner = localStorage.getItem('selectedPartner');
+			if (selectedPartner) {
+				const partner = JSON.parse(selectedPartner);
+				document.getElementById('partner-name').textContent = partner.name;
+				document.getElementById('partner-role').textContent = partner.role;
+				document.getElementById('partner-type').textContent = partner.type;
+				document.getElementById('partner-rate').textContent = partner.closeRate + '% success rate';
+				partnerInfo.style.display = 'block';
+				
+				// Set the opposite role automatically
+				roleSelect.value = partner.role.toLowerCase() === 'buyer' ? 'seller' : 'buyer';
+				
+				// Clear the selected partner after loading
+				localStorage.removeItem('selectedPartner');
+				
+				// Add initial message
+				setTimeout(() => {
+					appendMessage('assistant', `Welcome! You're starting a mandate discussion with ${partner.name} regarding ${partner.type}. Please describe your requirements or deal terms.`);
+				}, 500);
+			}
 
 			let sessionId = null;
 			let lastTimestamp = 0;
